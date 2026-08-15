@@ -1,0 +1,26 @@
+stages:
+  - test
+
+test_3_10:
+  image: python:3.10
+  stage: test
+  script:
+    - pip install -e .[dev]
+    - ruff check .
+    - PYTHONPATH=. pytest tests/
+
+test_3_11:
+  image: python:3.11
+  stage: test
+  script:
+    - pip install -e .[dev]
+    - ruff check .
+    - PYTHONPATH=. pytest tests/
+
+test_3_12:
+  image: python:3.12
+  stage: test
+  script:
+    - pip install -e .[dev]
+    - ruff check .
+    - PYTHONPATH=. pytest tests/
