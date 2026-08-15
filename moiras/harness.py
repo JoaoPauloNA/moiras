@@ -285,6 +285,11 @@ class GateResult:
 def run_gate(scenarios: Sequence[Scenario] = SCENARIOS) -> GateResult:
     """Run pure synthetic scenarios. Exceptions become sanitized failures."""
 
+    if isinstance(scenarios, (str, bytes)) or not isinstance(scenarios, Sequence):
+        raise TypeError("scenarios must be a non-empty sequence of Scenario instances")
+    if not scenarios:
+        raise ValueError("scenarios must not be empty")
+
     results = []
     for scenario in scenarios:
         if not isinstance(scenario, Scenario):
@@ -306,6 +311,7 @@ def run_gate(scenarios: Sequence[Scenario] = SCENARIOS) -> GateResult:
                 and report.recommendation_code == scenario.expected_recommendation
                 and actual_sentinel == scenario.expected_sentinel
                 and report.executed is False
+                and report.mode == "shadow"
             )
         except Exception:
             passed = False

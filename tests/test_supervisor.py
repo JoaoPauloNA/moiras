@@ -166,3 +166,15 @@ def test_shadow_report_cannot_claim_execution():
             counterfactual_code=valid.counterfactual_code,
             executed=True,
         )
+
+
+def test_shadow_report_cannot_claim_non_shadow_mode():
+    valid = supervise(make_action(), panel())
+    with pytest.raises(ContractValidationError):
+        ShadowReport(
+            risk_assessment=valid.risk_assessment,
+            council_decision=valid.council_decision,
+            recommendation_code=valid.recommendation_code,
+            counterfactual_code=valid.counterfactual_code,
+            mode="live",
+        )

@@ -60,6 +60,9 @@ padrão.
 python -m pip install -e ".[dev]"
 ```
 
+Esse comando instala o checkout-fonte atual. A versão 0.1.1 é publicada como
+tag de código-fonte; isso não implica pacote no PyPI nem suporte de produção.
+
 ## Validação reproduzível
 
 ```bash
@@ -75,9 +78,17 @@ borda, veto e divergência. O JSON contém apenas versão genérica de
 plataforma/Python, nomes dos cenários e contagens. O caminho de saída não entra
 no artefato.
 
-Validação local de 2026-08-14: lint aprovado, 317 testes aprovados em Python
-3.12 e gate 12/12 em Python 3.11 e 3.12. Python 3.10 está configurado no CI,
-mas não estava disponível localmente.
+Snapshot de validação registrado em 2026-08-15: 380 testes passaram no checkout
+0.1.1 revisado, e o gate offline fixo passou 12/12. A contagem é uma propriedade
+datada desse checkout, não uma promessa permanente de tamanho ou cobertura da
+suíte. Execute novamente os comandos acima na revisão exata sob avaliação.
+
+A proteção contra regressão inclui um guardião AST para superfícies não
+aprovadas de processo, rede, código dinâmico, reflexão e filesystem, além de um
+audit hook isolado sobre o caminho puro do gate, supervisor e broker sintético.
+O gate rejeita uma sequência vazia e exige `executed=false` e `mode=shadow`.
+Esses guardas detectam regressões específicas; não são verificação formal nem
+certificação de segurança.
 
 ## Escopo M0–M9
 
@@ -105,6 +116,10 @@ mas não estava disponível localmente.
   alegação de benchmark ou paper.
 - A Sentinela não prova que um agente está vivo ou morto; apenas classifica a
   diferença entre dois snapshots permitidos.
+- O sanitizador não é detector universal de PII, DLP ou segredos. Ele é defesa
+  em profundidade para registros tipados e allowlisted e formas sensíveis
+  conhecidas; conteúdo arbitrário do trabalho deve permanecer fora dos
+  contratos desde a origem.
 
 ## Licença
 

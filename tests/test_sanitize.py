@@ -139,6 +139,21 @@ class TestSanitizeValueForbiddenKeys:
             "user_password",
             "auth_token",
             "db_credential",
+            "passwords",
+            "prompts",
+            "secrets",
+            "passwd",
+            "pwd",
+            "creds",
+            "apitoken",
+            "tokens",
+            "paths",
+            "hosts",
+            "users",
+            "api_keys",
+            "\uff50\uff52\uff4f\uff4d\uff50\uff54",
+            "\u0440rompt",
+            "\u0440\u0430ssword",
         ],
     )
     def test_rejects_forbidden_key(self, key):
@@ -156,6 +171,10 @@ class TestSanitizeValueForbiddenKeys:
     def test_rejects_non_string_key(self):
         with pytest.raises(SanitizationError):
             sanitize_value({1: "x"})
+
+    def test_rejects_ambiguous_non_ascii_key(self):
+        with pytest.raises(SanitizationError):
+            sanitize_value({"caf\u00e9": "x"})
 
     def test_allows_benign_key_that_is_not_a_forbidden_token(self):
         # "path" is forbidden as a whole token but "artifact_revision" and
@@ -235,6 +254,81 @@ class TestSanitizeValueSecretsAndPaths:
 
     def test_allows_relative_looking_strings(self):
         assert sanitize_value("relative/looking/string") == "relative/looking/string"
+
+    @pytest.mark.parametrize("value", ["task-42", "risk-eval", "disk-1", "mask-value"])
+    def test_allows_incidental_secret_prefix_substrings(self, value):
+        assert sanitize_value(value) == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "ver /etc/passwd!",
+            'no arquivo "/etc/shadow"',
+            "cwd=/Users/j/.env",
+            "erro em [/var/log/auth.log]",
+            "leu /home/usu\u00e1rio/.ssh/id_rsa",
+            "(/etc/passwd)",
+            "path=/tmp/x",
+            "[/tmp/x]",
+            "'/tmp/x'",
+            "x=C:\\Windows\\System32",
+            '"C:\\Windows\\System32"',
+            "x=\\\\server\\share",
+            "home=~/private/data",
+        ],
+    )
+    def test_rejects_embedded_paths_across_boundaries(self, value):
+        with pytest.raises(SanitizationError):
+            sanitize_value(value)
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "ver,/etc/passwd",
+            "ver;/etc/passwd",
+            "ver!/etc/passwd",
+            "ver)/etc/passwd",
+            "ver`/etc/passwd`",
+            "prefix\uff1a/etc/passwd",
+            "URL https://example.test/a,/etc/passwd",
+        ],
+    )
+    def test_rejects_paths_after_any_non_path_punctuation(self, value):
+        with pytest.raises(SanitizationError):
+            sanitize_value(value)
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "https://example.test/a/path?next=/tmp/value",
+            "https://example.test/a/path?next=../relative/value",
+            "postgres://reader@example.test:5432/app",
+            "relative/looking/string",
+            "name_/relative/looking/string",
+            "./relative/looking/string",
+            "../relative/looking/string",
+            ".\\relative\\looking\\string",
+            "..\\relative\\looking\\string",
+            "ratio / result",
+        ],
+    )
+    def test_does_not_confuse_urls_or_relative_text_with_absolute_paths(self, value):
+        assert sanitize_value(value) == value
+
+    @pytest.mark.parametrize("value", ["contato@example.test", "CPF 123.456.789-09"])
+    def test_is_not_a_universal_pii_classifier(self, value):
+        assert sanitize_value(value) == value
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "\uff53\uff4b-abcdefghijklmnop",
+            "token \uff47\uff48\uff50_abcdefghijklmnop",
+        ],
+    )
+    def test_rejects_nfkc_equivalent_secret_prefixes(self, value):
+        with pytest.raises(SanitizationError):
+            sanitize_value(value)
 
 
 def test_every_contract_serialization_passes_sanitization():

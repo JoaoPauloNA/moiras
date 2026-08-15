@@ -1,6 +1,6 @@
 # Moiras threat model
 
-Scope: v0.1 shadow laboratory, milestones M0–M9.
+Scope: v0.1.1 alpha source release, milestones M0–M9.
 
 ## Assets and invariants
 
@@ -33,7 +33,7 @@ Scope: v0.1 shadow laboratory, milestones M0–M9.
 | Threat | Mitigation |
 | --- | --- |
 | malformed scores/enums/IDs | frozen contracts, finite bounds, strict enums |
-| secret/path-shaped outbound content | forbidden keys, normalized IDs, secret/path detection, explicit `to_dict` |
+| known secret/path-shaped output | normalized forbidden keys, known-shape detection, explicit `to_dict` |
 | false inactivity during a declared wait | wait/block precedence over inactivity |
 | counter regression or unrelated snapshots | comparison rejects regression, order, and identity mismatch |
 | risk dilution | maximum aggregation and hard-stop short circuit |
@@ -45,6 +45,8 @@ Scope: v0.1 shadow laboratory, milestones M0–M9.
 | synthetic capability replay | lock, TTL, terminal states, single successful consumption |
 | capability mistaken for authority | no payload; `synthetic=true`; `authorizes_real_action=false` |
 | exception leaks in gate | exceptions become boolean scenario failure; message is not serialized |
+| empty gate reported as success | empty scenario sequences are rejected |
+| shadow invariant regression | negative contract tests, AST guard, isolated runtime audit hook |
 
 ## Explicit non-goals
 
@@ -65,9 +67,11 @@ Risk floors and score bands are judgment calls that need empirical calibration.
 Snapshot producers can lie while preserving schema. Capability classes and
 human-review sources are declared, not cryptographically attested. The
 sanitizer recognizes known shapes but cannot prove absence of all encoded or
-novel secrets. JSONL can be truncated, reordered, or modified by another
-process. Intraprocess locks do not protect multiple workers or hosts.
+novel secrets, and it is not a universal PII or DLP detector. JSONL can be
+truncated, reordered, or modified by another process. Intraprocess locks do
+not protect multiple workers or hosts.
 
-Any future Athena adapter must therefore remain optional and fail-closed:
-Moiras may add an advisory signal, but its absence, failure, or disagreement
-must not weaken Athena's deterministic lifecycle and safety gates.
+The external Athena adapter must therefore remain optional and fail-closed:
+Moiras may add an advisory signal, but its absence, failure or disagreement
+must not weaken Athena's deterministic lifecycle and safety gates. No Athena
+control logic or adapter is implemented in this package.

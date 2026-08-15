@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import math
 import re
+import unicodedata
 from collections.abc import Mapping
 from typing import Any
 
@@ -179,12 +180,58 @@ SENSITIVE_ID_MARKERS = (
 
 _NON_ALNUM = re.compile(r"[^a-z0-9]+")
 
+_FORBIDDEN_KEY_ALIASES = frozenset(
+    {
+        "auth",
+        "apitoken",
+        "cred",
+        "creds",
+        "passwd",
+        "pwd",
+    }
+)
+
+
+def _canonical_key(text: str) -> str:
+    return unicodedata.normalize("NFKC", text).casefold()
+
 
 def _normalize_key(text: str) -> str:
-    return _NON_ALNUM.sub("", text.lower())
+    return _NON_ALNUM.sub("", _canonical_key(text))
 
 
 _FORBIDDEN_NORMALIZED = frozenset(_normalize_key(k) for k in FORBIDDEN_KEYS)
+_FORBIDDEN_ALIAS_NORMALIZED = frozenset(
+    _normalize_key(alias) for alias in _FORBIDDEN_KEY_ALIASES
+)
+_FORBIDDEN_KEY_FORMS = frozenset(
+    form
+    for base in (*_FORBIDDEN_NORMALIZED, *_FORBIDDEN_ALIAS_NORMALIZED)
+    for form in (base, f"{base}s", f"{base}es")
+)
+
+_SECRET_PREFIX_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9])(?:" + "|".join(re.escape(prefix) for prefix in SECRET_PREFIXES) + r")",
+    re.IGNORECASE,
+)
+_URL_PATTERN = re.compile(
+    r"\b[A-Za-z][A-Za-z0-9+.-]*://"
+    r"(?:(?![,;!()\[\]{}\"'`]/)[^\s])+"
+)
+_PATH_BOUNDARY = r"(?<![\w./\\])"
+_PATH_COMPONENT = r"[^\s/\\<>\"']+"
+_POSIX_PATH_PATTERN = re.compile(
+    _PATH_BOUNDARY + rf"/(?!/){_PATH_COMPONENT}(?:/{_PATH_COMPONENT})*"
+)
+_WINDOWS_PATH_PATTERN = re.compile(
+    _PATH_BOUNDARY + rf"[A-Za-z]:[\\/]{_PATH_COMPONENT}(?:[\\/]{_PATH_COMPONENT})*"
+)
+_UNC_PATH_PATTERN = re.compile(
+    _PATH_BOUNDARY + rf"\\\\{_PATH_COMPONENT}\\{_PATH_COMPONENT}"
+)
+_HOME_PATH_PATTERN = re.compile(
+    _PATH_BOUNDARY + rf"~[\\/]{_PATH_COMPONENT}(?:[\\/]{_PATH_COMPONENT})*"
+)
 
 
 def validate_id(value: str, *, field_name: str = "id") -> str:
@@ -226,31 +273,37 @@ def _check_key(key: Any) -> None:
         raise SanitizationError(f"non-string key not allowed: {key!r}")
     if key in ALLOWED_CONTRACT_KEYS:
         return
+    canonical = _canonical_key(key)
+    if not canonical.isascii():
+        raise SanitizationError(f"ambiguous non-ASCII key not allowed: {key!r}")
     normalized = _normalize_key(key)
-    tokens = frozenset(part for part in _NON_ALNUM.split(key.lower()) if part)
-    if normalized in _FORBIDDEN_NORMALIZED or tokens.intersection(FORBIDDEN_KEYS):
+    if not normalized:
+        raise SanitizationError(f"ambiguous key not allowed: {key!r}")
+    tokens = frozenset(part for part in _NON_ALNUM.split(canonical) if part)
+    if normalized in _FORBIDDEN_KEY_FORMS or tokens.intersection(_FORBIDDEN_KEY_FORMS):
         raise SanitizationError(f"forbidden key: {key!r}")
     if "apikey" in normalized:
         raise SanitizationError(f"forbidden key: {key!r}")
 
 
 def _check_string_value(value: str) -> None:
-    candidate = value.lstrip()
-    lowered = value.lower()
-    for prefix in SECRET_PREFIXES:
-        if prefix.lower() in lowered:
-            raise SanitizationError(f"value looks like a secret (prefix {prefix!r})")
+    candidate = unicodedata.normalize("NFKC", value).lstrip()
+    secret_match = _SECRET_PREFIX_PATTERN.search(candidate)
+    if secret_match is not None:
+        raise SanitizationError(
+            f"value looks like a secret (prefix {secret_match.group(0)!r})"
+        )
     if _looks_like_absolute_path(candidate):
         raise SanitizationError(f"value looks like an absolute path: {value!r}")
-    if re.search(
-        r"(?:^|\s)/(?!/)[A-Za-z0-9._~-]+(?:/[A-Za-z0-9._~-]+)*(?=$|[\s,.;:)])",
-        candidate,
-    ):
+    candidate_without_urls = _URL_PATTERN.sub("", candidate)
+    if _POSIX_PATH_PATTERN.search(candidate_without_urls):
         raise SanitizationError("value contains an absolute path")
-    if re.search(r"(?:^|\s)[A-Za-z]:[\\/]", candidate):
+    if _WINDOWS_PATH_PATTERN.search(candidate_without_urls):
         raise SanitizationError("value contains an absolute Windows path")
-    if re.search(r"(?:^|\s)\\\\[^\s\\]+\\[^\s\\]+", candidate):
+    if _UNC_PATH_PATTERN.search(candidate_without_urls):
         raise SanitizationError("value contains an absolute UNC path")
+    if _HOME_PATH_PATTERN.search(candidate_without_urls):
+        raise SanitizationError("value contains an absolute home path")
 
 
 def sanitize_value(value: Any) -> Any:
@@ -258,7 +311,8 @@ def sanitize_value(value: Any) -> Any:
 
     Accepts mappings, lists, tuples, strings, bools, ints, floats, and
     ``None``. Mapping keys are checked against ``FORBIDDEN_KEYS``; string
-    values are checked against ``SECRET_PREFIXES`` and absolute-path shapes.
+    values are checked against known ``SECRET_PREFIXES`` and absolute-path
+    shapes. This is deliberately not a universal PII or secret classifier.
     Returns the value unchanged when it passes -- this function validates,
     it does not transform or redact.
     """

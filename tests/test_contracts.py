@@ -250,6 +250,16 @@ class TestRiskAssessment:
                 bypass_council=False,
             )
 
+    def test_materializes_reason_code_generator_once(self):
+        assessment = RiskAssessment(
+            score=10.0,
+            dimension_scores={},
+            reason_codes=(code for code in (ReasonCode.HARD_STOP_ACTION,)),
+            bypass_council=True,
+        )
+
+        assert assessment.reason_codes == (ReasonCode.HARD_STOP_ACTION,)
+
     def test_dimension_scores_immutable(self):
         assessment = RiskAssessment(
             score=1.0,
@@ -292,6 +302,14 @@ class TestSentinelResult:
                 evidence_codes=("NOT_A_CODE",),
             )
 
+    def test_materializes_evidence_code_generator_once(self):
+        result = SentinelResult(
+            classification=SentinelClass.PROBABLE_INACTIVITY,
+            evidence_codes=(code for code in (EvidenceCode.IDLE_THRESHOLD_EXCEEDED,)),
+        )
+
+        assert result.evidence_codes == (EvidenceCode.IDLE_THRESHOLD_EXCEEDED,)
+
 
 class TestCouncilOpinion:
     def test_valid_opinion_constructs(self):
@@ -333,6 +351,17 @@ class TestCouncilOpinion:
     def test_rejects_bad_mitigation_code(self):
         with pytest.raises(ContractValidationError):
             make_opinion(mitigation_codes=("NOT_A_CODE",))
+
+    def test_materializes_both_code_generators_once(self):
+        opinion = make_opinion(
+            reason_codes=(code for code in (ReasonCode.COUNCIL_VETO,)),
+            mitigation_codes=(
+                code for code in (MitigationCode.REQUIRE_HUMAN_APPROVAL,)
+            ),
+        )
+
+        assert opinion.reason_codes == (ReasonCode.COUNCIL_VETO,)
+        assert opinion.mitigation_codes == (MitigationCode.REQUIRE_HUMAN_APPROVAL,)
 
     def test_to_dict_has_no_free_text_rationale(self):
         opinion = make_opinion()
@@ -382,6 +411,16 @@ class TestCouncilDecision:
                 reason_codes=(),
                 mode="live",
             )
+
+    def test_materializes_reason_code_generator_once(self):
+        decision = CouncilDecision(
+            verdict=Verdict.STOP_AND_HUMAN,
+            final_score=10.0,
+            council_bypassed=True,
+            reason_codes=(code for code in (ReasonCode.HARD_STOP_ACTION,)),
+        )
+
+        assert decision.reason_codes == (ReasonCode.HARD_STOP_ACTION,)
 
     def test_to_dict_allowlisted(self):
         decision = CouncilDecision(

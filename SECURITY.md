@@ -1,11 +1,11 @@
 # Security policy
 
-Moiras v0.1 is an alpha, local, shadow-mode research library. It is not a
-production authorization boundary.
+Moiras 0.1.1 is an alpha source release: a local, shadow-mode research library.
+It is not a production authorization boundary.
 
 ## Reportable issues
 
-Please use a private security advisory after the repository is published for:
+Please use a private repository security advisory for:
 
 - an API that can execute, authorize, cancel, or supply a credential;
 - leakage of prompt, response, command, path, host, user, model identity, or
@@ -16,6 +16,16 @@ Please use a private security advisory after the repository is published for:
 
 Do not include real credentials, private work content, or personal paths in a
 report. Use synthetic reproduction data.
+
+The outbound sanitizer is defense in depth for typed, allowlisted records and
+known sensitive shapes. It is not a universal detector for PII, secrets,
+encoded data or novel credential formats. Passing arbitrary work content
+through it does not make that content safe to store or publish.
+
+Regression tests combine AST inspection with an isolated runtime audit hook for
+the pure supervision path. Those tests narrow accidental execution surfaces;
+they are not formal isolation, a sandbox, or permission to grant Moiras real
+authority.
 
 ## Unsupported deployments
 

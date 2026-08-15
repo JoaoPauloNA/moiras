@@ -58,6 +58,9 @@ Moiras requires Python 3.10 or newer and has no third-party runtime dependency.
 python -m pip install -e ".[dev]"
 ```
 
+This installs the current source checkout. Version 0.1.1 is published as a
+source tag; no PyPI package or production-support commitment is implied.
+
 ## Minimal example
 
 ```python
@@ -122,9 +125,17 @@ low-risk action, non-disposable context, an edge-model panel, veto, and
 divergence. Its report contains only generic platform/Python metadata,
 scenario names, and pass/fail counts. The output path is never serialized.
 
-Local validation on 2026-08-14: lint passed, 317 tests passed on Python 3.12,
-the gate passed 12/12 on Python 3.11 and 3.12. Python 3.10 is configured in CI
-but was not available for the local run.
+Validation snapshot recorded on 2026-08-15: 380 tests passed in the reviewed
+0.1.1 checkout, and the fixed offline gate passed 12/12. The test count is a
+dated property of that checkout, not a permanent suite-size or coverage
+promise. Re-run the commands above for the exact revision being evaluated.
+
+Regression protection includes an AST guard for unapproved process, network,
+dynamic-code, reflection and filesystem surfaces, plus an isolated runtime
+audit hook over the pure gate, supervisor and synthetic broker path. The gate
+rejects an empty scenario sequence and requires both `executed=false` and
+`mode=shadow`. These guards detect specific regressions; they are not formal
+verification or a security certification.
 
 ## Implemented milestones
 
@@ -169,6 +180,9 @@ docs/              protocol and threat model
   output is never treated as ground truth.
 - Not proof that an agent is alive or dead. The Sentinel reports only what two
   allowlisted snapshots support.
+- Not a universal PII, DLP, or secret detector. Sanitization is defense in
+  depth for typed, allowlisted records and known sensitive shapes; arbitrary
+  work content must remain outside the contracts in the first place.
 
 ## License
 

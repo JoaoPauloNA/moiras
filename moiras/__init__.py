@@ -6,10 +6,10 @@ any supervised system (including Athena). Every decision this library
 produces is a labeled, non-binding recommendation (``mode="shadow"``,
 ``executed=False``).
 
-Status: milestones M0-M9 of the v1-independent shadow-lab design. There is no
-integration with Athena yet -- see docs/protocol.md for the full status
-and docs/threat-model.md for what this library does and does not defend
-against.
+Status: milestones M0-M9 of the v1-independent shadow-lab design. No Athena
+integration code lives in this package; Athena provides a separate optional,
+disabled-by-default observer. See docs/protocol.md for the full status and
+docs/threat-model.md for what this library does and does not defend against.
 """
 
 from .broker import (
@@ -69,7 +69,7 @@ from .supervisor import (
     supervise,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "__version__",

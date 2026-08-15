@@ -1,4 +1,7 @@
 import json
+from types import SimpleNamespace
+
+import pytest
 
 from moiras.__main__ import main
 from moiras.harness import SCENARIOS, Scenario, run_gate
@@ -30,6 +33,28 @@ def test_gate_passes_and_report_is_sanitized():
     assert result.passed == result.total == len(SCENARIOS)
     assert sanitize_value(result.to_dict()) == result.to_dict()
     assert result.platform_family in {"POSIX", "WINDOWS", "OTHER"}
+
+
+def test_gate_rejects_an_empty_scenario_sequence():
+    with pytest.raises(ValueError, match="must not be empty"):
+        run_gate(())
+
+
+def test_gate_rejects_a_report_outside_shadow_mode(monkeypatch):
+    scenario = SCENARIOS[0]
+    fake_report = SimpleNamespace(
+        council_decision=SimpleNamespace(verdict=scenario.expected_verdict),
+        recommendation_code=scenario.expected_recommendation,
+        sentinel_result=None,
+        executed=False,
+        mode="live",
+    )
+    monkeypatch.setattr("moiras.harness.supervise", lambda *args, **kwargs: fake_report)
+
+    result = run_gate((scenario,))
+
+    assert result.success is False
+    assert result.failed == 1
 
 
 def test_failed_expectation_makes_gate_fail_without_exception_content():

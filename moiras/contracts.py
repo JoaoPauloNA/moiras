@@ -70,6 +70,18 @@ def _require_finite_range(value: object, field_name: str, lo: float, hi: float) 
         raise ContractValidationError(f"{field_name} must be in [{lo}, {hi}]")
 
 
+def _materialize_enum_codes(value: object, enum_type: type[Enum], field_name: str) -> tuple:
+    """Materialize an iterable once, then validate and retain that same tuple."""
+
+    try:
+        codes = tuple(value)
+    except TypeError as exc:
+        raise ContractValidationError(f"{field_name} must be an iterable") from exc
+    if any(not isinstance(code, enum_type) for code in codes):
+        raise ContractValidationError(f"{field_name} must be {enum_type.__name__} values")
+    return codes
+
+
 # ---------------------------------------------------------------------------
 # Temporal snapshot (Sentinel input)
 # ---------------------------------------------------------------------------
@@ -309,10 +321,12 @@ class RiskAssessment:
             normalized_dims[dim] = float(value)
         object.__setattr__(self, "dimension_scores", MappingProxyType(normalized_dims))
 
-        for code in self.reason_codes:
-            if not isinstance(code, ReasonCode):
-                raise ContractValidationError("reason_codes must be ReasonCode values")
-        object.__setattr__(self, "reason_codes", tuple(self.reason_codes))
+        reason_codes = _materialize_enum_codes(
+            self.reason_codes,
+            ReasonCode,
+            "reason_codes",
+        )
+        object.__setattr__(self, "reason_codes", reason_codes)
 
         _require_bool(self.bypass_council, "bypass_council")
         if self.schema_version != SCHEMA_VERSION:
@@ -364,10 +378,12 @@ class SentinelResult:
     def __post_init__(self) -> None:
         if not isinstance(self.classification, SentinelClass):
             raise ContractValidationError("classification must be a SentinelClass")
-        for code in self.evidence_codes:
-            if not isinstance(code, EvidenceCode):
-                raise ContractValidationError("evidence_codes must be EvidenceCode values")
-        object.__setattr__(self, "evidence_codes", tuple(self.evidence_codes))
+        evidence_codes = _materialize_enum_codes(
+            self.evidence_codes,
+            EvidenceCode,
+            "evidence_codes",
+        )
+        object.__setattr__(self, "evidence_codes", evidence_codes)
         if self.schema_version != SCHEMA_VERSION:
             raise ContractValidationError(f"unsupported schema_version: {self.schema_version!r}")
 
@@ -435,15 +451,19 @@ class CouncilOpinion:
             normalized_dims[dim] = float(value)
         object.__setattr__(self, "dimension_scores", MappingProxyType(normalized_dims))
 
-        for code in self.reason_codes:
-            if not isinstance(code, ReasonCode):
-                raise ContractValidationError("reason_codes must be ReasonCode values")
-        object.__setattr__(self, "reason_codes", tuple(self.reason_codes))
+        reason_codes = _materialize_enum_codes(
+            self.reason_codes,
+            ReasonCode,
+            "reason_codes",
+        )
+        object.__setattr__(self, "reason_codes", reason_codes)
 
-        for code in self.mitigation_codes:
-            if not isinstance(code, MitigationCode):
-                raise ContractValidationError("mitigation_codes must be MitigationCode values")
-        object.__setattr__(self, "mitigation_codes", tuple(self.mitigation_codes))
+        mitigation_codes = _materialize_enum_codes(
+            self.mitigation_codes,
+            MitigationCode,
+            "mitigation_codes",
+        )
+        object.__setattr__(self, "mitigation_codes", mitigation_codes)
 
         if self.schema_version != SCHEMA_VERSION:
             raise ContractValidationError(f"unsupported schema_version: {self.schema_version!r}")
@@ -493,10 +513,12 @@ class CouncilDecision:
             raise ContractValidationError("verdict must be a Verdict")
         _require_finite_range(self.final_score, "final_score", 0, 10)
         _require_bool(self.council_bypassed, "council_bypassed")
-        for code in self.reason_codes:
-            if not isinstance(code, ReasonCode):
-                raise ContractValidationError("reason_codes must be ReasonCode values")
-        object.__setattr__(self, "reason_codes", tuple(self.reason_codes))
+        reason_codes = _materialize_enum_codes(
+            self.reason_codes,
+            ReasonCode,
+            "reason_codes",
+        )
+        object.__setattr__(self, "reason_codes", reason_codes)
         if self.executed is not False:
             raise ContractValidationError("executed must always be False in shadow mode")
         if self.mode != "shadow":

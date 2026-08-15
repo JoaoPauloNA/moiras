@@ -1,6 +1,6 @@
 # Moiras shadow protocol
 
-Status: v0.1 laboratory contract, milestones M0–M9. The protocol is
+Status: v0.1.1 alpha source release, milestones M0–M9. The protocol is
 advisory-only and independent from Athena.
 
 ## Authority boundary
@@ -99,6 +99,12 @@ Records omit prompt, response, command, file path, host, user, process ID,
 environment variables, reviewer/model identity, rationale, and credentials.
 The destination path belongs to the recorder and is never serialized.
 
+This boundary is primarily structural: contracts and serializers accept only
+explicit categorical fields. The sanitizer additionally rejects known
+sensitive keys, secret/credential shapes and path shapes. It is not a
+universal PII, DLP or secret detector, and it must not be used to make arbitrary
+prompt, output or work content safe for recording.
+
 Metrics correlate `(execution_id, attempt_id)` only. The latest recommendation
 must be a shadow candidate, and a human outcome must be strictly later. Equal
 duplicate labels are tolerated; conflicting or indeterminate labels are marked
@@ -108,7 +114,7 @@ rate are descriptive research signals, not accuracy, precision, certification,
 or a benchmark.
 
 The JSONL lock is intraprocess only. Multi-process integrity, retention,
-signatures, access control, and deletion policy are outside v0.1.
+signatures, access control, and deletion policy are outside v0.1.1.
 
 ## 7. Offline gate
 
@@ -120,3 +126,20 @@ or printing the path.
 
 Passing the gate means that these fixtures match the encoded policy. It does
 not validate real-world safety or publication readiness.
+
+The gate rejects an empty scenario sequence. A scenario passes only when its
+expected categorical outputs match and the report retains both
+`executed=false` and `mode=shadow`.
+
+## 8. Regression guards
+
+The test suite statically inspects the package AST for unapproved ordinary,
+aliased or dynamic imports, dangerous calls, reflection and filesystem access.
+Only the append performed by the evidence recorder and the explicitly selected
+CLI report write are structurally allowlisted. A separate subprocess installs a
+runtime audit hook and exercises the pure gate, supervisor and synthetic broker
+path; process, network, dynamic-code and write audit events fail that test.
+
+These controls are regression detectors, not proof that every Python
+execution technique is impossible. The package still has no callback, process
+handle, credential channel or authority-bearing capability.
