@@ -160,8 +160,9 @@ docs/              protocol and threat model
 
 - Not an execution engine, credential vault, authorization service, sandbox,
   or model router.
-- Not integrated with Athena in this repository. A future adapter must be
-  optional, advisory, and fail-closed.
+- No Athena integration code lives in this repository. Athena exposes a
+  separate [optional, disabled-by-default observer](https://github.com/JoaoPauloNA/athena)
+  that preserves Moiras as advisory and fail-closed.
 - Not a production or multi-tenant service. The broker and evidence lock are
   process-local; JSONL is not a multi-process ledger.
 - Not a benchmark result. No real agents or models are called, and advisory

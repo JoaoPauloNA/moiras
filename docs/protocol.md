@@ -11,8 +11,9 @@ credential provider, network client, or cancellation primitive. `executed` is
 structurally fixed to `false`; `mode` is fixed to `shadow`.
 
 Athena remains responsible for its own deterministic lifecycle, cancellation,
-termination confirmation, workspace lease, and fallback gates. No adapter is
-implemented in this repository.
+termination confirmation, workspace lease, and fallback gates. Its optional
+observer adapter lives in the Athena repository; no adapter or Athena control
+logic is implemented here.
 
 ## 1. Temporal observation
 

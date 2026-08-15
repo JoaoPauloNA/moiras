@@ -96,8 +96,9 @@ mas não estava disponível localmente.
 
 - Não é motor de execução, cofre de credenciais, serviço de autorização,
   sandbox ou roteador de modelos.
-- Não há integração com Athena neste repositório. Um adaptador futuro precisa
-  ser opcional, consultivo e fail-closed.
+- Não há código de integração Athena neste repositório. O Athena expõe um
+  [observador separado, opcional e desativado por padrão](https://github.com/JoaoPauloNA/athena),
+  preservando a Moiras como consultiva e fail-closed.
 - Não está pronto para produção ou multi-tenant. Locks e broker são locais ao
   processo; JSONL não é ledger multiprocesso.
 - Não há resultados de modelos reais. Advisory não é ground truth e não há
